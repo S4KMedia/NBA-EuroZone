@@ -43,13 +43,11 @@ jobs:
           echo "== Grep for theme =="
           grep -R "^theme" -n || true
 
-      - name: Clean Hugo module/cache
-        run: |
-          hugo mod clean
-          rm -rf ~/.cache/hugo_cache 2>/dev/null || true
-
-      - name: Hugo modules tidy
+      - name: Hugo modules tidy (fetch pins)
         run: hugo mod tidy
+
+      - name: Show Hugo module graph (debug)
+        run: hugo mod graph
 
       - name: Build
         run: hugo --gc --minify
