@@ -7,8 +7,6 @@ defaultContentLanguageInSubdir = true
 enableRobotsTXT = true
 canonifyURLs = true
 
-theme = ["ananke"]   # προτιμότερο με Hugo Modules
-
 [outputs]
   home = ["HTML", "RSS", "JSON"]
 
