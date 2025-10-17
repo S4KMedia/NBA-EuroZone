@@ -2,12 +2,13 @@
 baseURL = "https://s4kmedia.github.io/nba-eurozone/"
 title = "NBA EuroZone"
 publishDir = "public"
-
 defaultContentLanguage = "en"
 defaultContentLanguageInSubdir = true
-
 enableRobotsTXT = true
 canonifyURLs = true
+
+# ✅ force-load Ananke layouts even with module imports
+theme = ["github.com/theNewDynamic/gohugo-theme-ananke"]
 
 [outputs]
   home = ["HTML", "RSS", "JSON"]
