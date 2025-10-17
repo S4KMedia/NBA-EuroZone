@@ -1,0 +1,71 @@
+name: Build & Deploy Hugo site
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: '0.151.0'
+          extended: true
+
+      - name: Setup Go (for Hugo Modules)
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+
+      - name: Show config tree (debug)
+        run: |
+          echo "== CONFIG =="
+          find config -maxdepth 2 -type f -print || true
+          echo "== ROOT =="
+          ls -la
+          echo "== Grep for [module] =="
+          grep -R "^\[module" -n || true
+          echo "== Grep for theme =="
+          grep -R "^theme" -n || true
+
+      - name: Clean Hugo module/cache
+        run: |
+          hugo mod clean
+          rm -rf ~/.cache/hugo_cache 2>/dev/null || true
+
+      - name: Hugo modules tidy
+        run: hugo mod tidy
+
+      - name: Build
+        run: hugo --gc --minify
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
