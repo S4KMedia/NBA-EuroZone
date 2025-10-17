@@ -14,7 +14,7 @@ from slugify import slugify
 from PIL import Image
 
 # ---------- Paths ----------
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path.cwd()
 CONTENT_EN = ROOT / "content" / "en" / "posts"
 CONTENT_EL = ROOT / "content" / "el" / "posts"
 STATE = ROOT / ".state"; STATE.mkdir(exist_ok=True)
