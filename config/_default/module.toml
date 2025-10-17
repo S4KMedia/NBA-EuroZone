@@ -1,9 +1,0 @@
-# config/_default/module.toml
-[module]
-  [module.hugoVersion]
-    extended = true
-    min = "0.111.0"
-
-  [[module.imports]]
-    path = "github.com/theNewDynamic/gohugo-theme-ananke"
-    version = "v0.11.0"
