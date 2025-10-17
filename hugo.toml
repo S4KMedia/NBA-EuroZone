@@ -1,13 +1,16 @@
+# hugo.toml
 baseURL = "https://s4kmedia.github.io/nba-eurozone/"
 title = "NBA EuroZone"
 publishDir = "public"
+
 defaultContentLanguage = "en"
 defaultContentLanguageInSubdir = true
+
 enableRobotsTXT = true
 canonifyURLs = true
 
 [outputs]
-  home = ["HTML","RSS","JSON"]
+  home = ["HTML", "RSS", "JSON"]
 
 [pagination]
   pagerSize = 12
@@ -24,24 +27,57 @@ canonifyURLs = true
 [permalinks]
   posts = "/:slug/"
 
-[languages.en]
-  languageName = "EN"
-  weight = 1
-  title = "NBA EuroZone"
-  contentDir = "content/en"
-  [languages.en.menu]
-    [[languages.en.menu.main]]; name="News"; url="/"; weight=1
-    [[languages.en.menu.main]]; name="Categories"; url="/categories/"; weight=2
-    [[languages.en.menu.main]]; name="Tags"; url="/tags/"; weight=3
-    [[languages.en.menu.main]]; name="About"; url="/about/"; weight=5
+[params]
+  env = "production"
+  defaultTheme = "auto"
+  ShowReadingTime = true
+  ShowBreadCrumbs = true
+  ShowPostNavLinks = true
 
-[languages.el]
-  languageName = "EL"
-  weight = 2
-  title = "NBA EuroZone"
-  contentDir = "content/el"
-  [languages.el.menu]
-    [[languages.el.menu.main]]; name="Νέα"; url="/"; weight=1
-    [[languages.el.menu.main]]; name="Κατηγορίες"; url="/categories/"; weight=2
-    [[languages.el.menu.main]]; name="Ετικέτες"; url="/tags/"; weight=3
-    [[languages.el.menu.main]]; name="Σχετικά"; url="/about/"; weight=5
+[languages]
+
+  [languages.en]
+    languageName = "EN"
+    weight = 1
+    title = "NBA EuroZone"
+    contentDir = "content/en"
+    [languages.en.menu]
+      [[languages.en.menu.main]]
+        name = "News"
+        url  = "/"
+        weight = 1
+      [[languages.en.menu.main]]
+        name = "Categories"
+        url  = "/categories/"
+        weight = 2
+      [[languages.en.menu.main]]
+        name = "Tags"
+        url  = "/tags/"
+        weight = 3
+      [[languages.en.menu.main]]
+        name = "About"
+        url  = "/about/"
+        weight = 5
+
+  [languages.el]
+    languageName = "EL"
+    weight = 2
+    title = "NBA EuroZone"
+    contentDir = "content/el"
+    [languages.el.menu]
+      [[languages.el.menu.main]]
+        name = "Νέα"
+        url  = "/"
+        weight = 1
+      [[languages.el.menu.main]]
+        name = "Κατηγορίες"
+        url  = "/categories/"
+        weight = 2
+      [[languages.el.menu.main]]
+        name = "Ετικέτες"
+        url  = "/tags/"
+        weight = 3
+      [[languages.el.menu.main]]
+        name = "Σχετικά"
+        url  = "/about/"
+        weight = 5
