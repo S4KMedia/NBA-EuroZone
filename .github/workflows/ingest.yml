@@ -33,9 +33,11 @@ jobs:
         run: |
           echo "== PWD ==" && pwd
           echo "== TREE content/en =="
-          find content/en -maxdepth 2 -type f -print || true
+          find content/en -maxdepth 5 -type f -print || true
           echo "== TREE content/el =="
-          find content/el -maxdepth 2 -type f -print || true
+          find content/el -maxdepth 5 -type f -print || true
+          echo "== GIT STATUS =="
+          git status --porcelain
 
       - name: Commit & push if changed
         run: |
