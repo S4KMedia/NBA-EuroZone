@@ -161,6 +161,9 @@ def write_post(lang, slug, title, date_iso, body_md, source_url, tags_dict, feat
     folder = CONTENT_EN if lang=="en" else CONTENT_EL
     path = folder / slug / "index.md"
     path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(frontmatter.dumps(post), encoding="utf-8")
+    print(f"[EUROZONE] Wrote {lang.upper()} → {path}")
+    return path
 
     fm = {
         "title": title,
