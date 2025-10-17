@@ -1,0 +1,9 @@
+feedparser
+python-frontmatter
+python-slugify
+requests
+beautifulsoup4
+readability-lxml
+Pillow
+deepl
+PyYAML
