@@ -1,0 +1,37 @@
+name: Ingest RSS → EN/EL posts
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # κάθε ώρα στο :17
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run importer
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          DEEPL_TARGET_LANG: EL
+        run: python scripts/rss_import.py
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "nba-eurozone-bot"
+          git config user.email "bot@nobounce.local"
+          git add -A
+          git diff --quiet && echo "No changes." || (git commit -m "Ingest: new posts" && git push)
