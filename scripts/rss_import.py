@@ -158,29 +158,34 @@ def store_cover(slug, img_url):
     return f"/images/covers/{slug}-cover.jpg", "local"
 
 def write_post(lang, slug, title, date_iso, body_md, source_url, tags_dict, featured_image):
-    folder = CONTENT_EN if lang=="en" else CONTENT_EL
-    path = folder / slug / "index.md"
+    """
+    Γράφει Hugo post ως content/<lang>/posts/<slug>/index.md
+    """
+    base_dir = CONTENT_EN if lang == "en" else CONTENT_EL
+    path = base_dir / slug / "index.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(frontmatter.dumps(post), encoding="utf-8")
-    print(f"[EUROZONE] Wrote {lang.upper()} → {path}")
-    return path
 
     fm = {
-        "title": title,
+        "title": title or "Untitled",
         "date": date_iso,
         "categories": ["news"],
         "tags": sorted(set(sum(tags_dict.values(), []))) if tags_dict else [],
-        "players": tags_dict.get("players", []),
-        "teams": tags_dict.get("teams", []),
-        "leagues": tags_dict.get("leagues", []),
-        "countries": tags_dict.get("countries", []),
-        "topics": tags_dict.get("topics", []),
-        "source": source_url,
+        "players": tags_dict.get("players", []) if tags_dict else [],
+        "teams": tags_dict.get("teams", []) if tags_dict else [],
+        "leagues": tags_dict.get("leagues", []) if tags_dict else [],
+        "countries": tags_dict.get("countries", []) if tags_dict else [],
+        "topics": tags_dict.get("topics", []) if tags_dict else [],
+        "source": source_url or "",
         "featured_image": featured_image or "",
         "draft": False,
     }
-    post = frontmatter.Post(body_md, **fm)
-    path.write_text(frontmatter.dumps(post), encoding="utf-8")
+
+    # ΜΗΝ χρησιμοποιήσεις το όνομα 'post' (δήμιουργησε conflict)
+    fm_post = frontmatter.Post(body_md or "", **fm)
+    content = frontmatter.dumps(fm_post)
+    path.write_text(content, encoding="utf-8")
+
+    print(f"[EUROZONE] Wrote {lang.upper()} → {path}")
     return path
 
 def main():
