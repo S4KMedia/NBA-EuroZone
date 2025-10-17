@@ -1,0 +1,10 @@
+sources:
+  - name: Eurohoops (NBA)
+    url: https://www.eurohoops.net/en/nba-news/feed/
+    tags: ["NBA","Europeans","Eurohoops"]
+
+  - name: BasketNews (NBA)
+    url: https://basketnews.com/rss/nba.xml
+    tags: ["NBA","BasketNews"]
+
+  # Μπορούμε να προσθέσουμε official team feeds αργότερα
