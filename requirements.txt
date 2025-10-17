@@ -7,3 +7,4 @@ readability-lxml
 Pillow
 deepl
 PyYAML
+boto3
