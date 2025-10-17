@@ -29,6 +29,14 @@ jobs:
           DEEPL_TARGET_LANG: EL
         run: python scripts/rss_import.py
 
+      - name: List generated content (debug)
+        run: |
+          echo "== PWD ==" && pwd
+          echo "== TREE content/en =="
+          find content/en -maxdepth 2 -type f -print || true
+          echo "== TREE content/el =="
+          find content/el -maxdepth 2 -type f -print || true
+
       - name: Commit & push if changed
         run: |
           git config user.name "nba-eurozone-bot"
