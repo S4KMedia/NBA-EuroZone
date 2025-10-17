@@ -7,8 +7,7 @@ defaultContentLanguageInSubdir = true
 enableRobotsTXT = true
 canonifyURLs = true
 
-# ✅ force-load Ananke layouts even with module imports
-theme = ["github.com/theNewDynamic/gohugo-theme-ananke"]
+theme = ["ananke"]   # προτιμότερο με Hugo Modules
 
 [outputs]
   home = ["HTML", "RSS", "JSON"]
