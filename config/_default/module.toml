@@ -1,3 +1,4 @@
+# config/_default/module.toml
 [module]
   [module.hugoVersion]
     extended = true
