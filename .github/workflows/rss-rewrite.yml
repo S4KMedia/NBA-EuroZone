@@ -17,6 +17,13 @@ jobs:
         with:
           persist-credentials: true
 
+      - name: Show tree (debug)
+        run: |
+          echo "== ROOT =="
+          ls -la
+          echo "== scripts =="
+          ls -la scripts || true
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -29,10 +36,10 @@ jobs:
 
       - name: Run importer (rewrite EN & EL)
         env:
-          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}   # optional fallback
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}   # required
-          CF_API_TOKEN:  ${{ secrets.CF_API_TOKEN }}    # required
-          CF_MODEL:      ${{ vars.CF_MODEL }}           # optional (defaults to llama-3.1-70b-instruct)
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN:  ${{ secrets.CF_API_TOKEN }}
+          CF_MODEL:      ${{ vars.CF_MODEL }}
         run: |
           python scripts/rss_import_rewrite.py
 
