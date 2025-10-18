@@ -15,8 +15,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # 🔒 ΠΙΝΑΡΟΥΜΕ την έκδοση του theme που θα γίνεται cache
-  THEME_REF: v0.11.0
+  # 🔒 Πιναρισμένη έκδοση Ananke (υπάρχει στα releases)
+  THEME_REF: v2.12.0
   THEME_NAME: ananke
   THEME_REPO: https://github.com/theNewDynamic/gohugo-theme-ananke.git
   SITE_BASEURL: https://s4kmedia.github.io/nba-eurozone/
@@ -34,7 +34,7 @@ jobs:
           hugo-version: '0.151.0'
           extended: true
 
-      # ✅ Cache το τοπικό theme (γρηγορότερα builds)
+      # ✅ Cache του theme για γρήγορα builds
       - name: Cache Hugo theme
         id: cache-theme
         uses: actions/cache@v3
@@ -42,16 +42,16 @@ jobs:
           path: themes/${{ env.THEME_NAME }}
           key: ananke-${{ env.THEME_REF }}-${{ runner.os }}
 
-      # Clone ΜΟΝΟ αν δεν υπάρχει cache
+      # Clone ΜΟΝΟ αν δεν βρέθηκε στο cache
       - name: Fetch Ananke theme (local, pinned)
         if: steps.cache-theme.outputs.cache-hit != 'true'
         run: |
           rm -rf themes/${THEME_NAME}
           mkdir -p themes
           git clone --depth=1 --branch "${THEME_REF}" "${THEME_REPO}" "themes/${THEME_NAME}"
-          test -f "themes/${THEME_NAME}/theme.toml" && echo "Theme ready."
+          test -f "themes/${THEME_NAME}/theme.toml" && echo "✅ Theme ready."
 
-      # Debug για να βλέπουμε config & περιεχόμενο
+      # Debug (χρήσιμο αν κάτι πάει στραβά)
       - name: Show config tree (debug)
         run: |
           echo "== CONFIG =="
@@ -63,7 +63,7 @@ jobs:
           echo "== Grep for theme =="
           grep -R "^theme" -n || true
 
-      # Καθάρισμα cache (ασφαλές)
+      # Καθάρισμα Hugo cache
       - name: Clean Hugo cache
         run: |
           rm -rf ~/.cache/hugo_cache ~/.hugo_cache _vendor || true
