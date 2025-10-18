@@ -1,10 +1,130 @@
+# Feeds spec for NBA EuroZone (EN/EL). Each entry:
+# - url: required
+# - country/team: optional (used for taxonomies)
+# - tags: optional (extra taxonomies)
+#
+# Προσοχή: κράτα τις διευθύνσεις όπως είναι· αν αλλάξουν, απλώς πρόσθεσέ τες εδώ.
+
 sources:
-  - name: Eurohoops (NBA)
-    url: https://www.eurohoops.net/en/nba-news/feed/
-    tags: ["NBA","Europeans","Eurohoops"]
 
-  - name: BasketNews (NBA)
-    url: https://basketnews.com/rss/nba.xml
-    tags: ["NBA","BasketNews"]
+  # ===== GREECE =====
+  - country: Greece
+    team: Olympiacos
+    url: https://www.eurohoops.net/el/tag/olympiacos-el/feed/
+    tags: ["Greece","Olympiacos","EuroLeague"]
+  - country: Greece
+    team: Panathinaikos
+    url: https://www.eurohoops.net/el/tag/panathinaikos-el/feed/
+    tags: ["Greece","Panathinaikos","EuroLeague"]
+  - country: Greece
+    team: PAOK
+    url: https://www.sdna.gr/teams/paok/mpasket/feed
+    tags: ["Greece","PAOK"]
+  - country: Greece
+    team: PAOK
+    url: https://www.metrosport.gr/paok/mpasket/feed
+    tags: ["Greece","PAOK"]
+  - country: Greece
+    team: PAOK
+    url: https://www.sport24.gr/basket/tag/paok/feed/
+    tags: ["Greece","PAOK"]
+  - country: Greece
+    team: PAOK
+    url: https://www.paoktoday.gr/feed/
+    tags: ["Greece","PAOK"]
 
-  # Μπορούμε να προσθέσουμε official team feeds αργότερα
+  # ===== SPAIN =====
+  - country: Spain
+    team: Real Madrid
+    url: https://www.eurohoops.net/en/tag/real-madrid-en/feed/
+    tags: ["Spain","Real Madrid","EuroLeague"]
+  - country: Spain
+    team: FC Barcelona
+    url: https://www.eurohoops.net/en/tag/barcelona-en/feed/
+    tags: ["Spain","FC Barcelona","EuroLeague"]
+  - country: Spain
+    team: Valencia
+    url: https://www.eurohoops.net/en/tag/valencia-basket-en/feed/
+    tags: ["Spain","Valencia","EuroLeague"]
+  - country: Spain
+    team: Baskonia
+    url: https://www.eurohoops.net/en/tag/baskonia-en/feed/
+    tags: ["Spain","Baskonia","EuroLeague"]
+
+  # ===== TURKEY =====
+  - country: Turkey
+    team: Fenerbahce
+    url: https://www.eurohoops.net/en/tag/fenerbahce-en/feed/
+    tags: ["Turkey","Fenerbahce","EuroLeague"]
+  - country: Turkey
+    team: Anadolu Efes
+    url: https://www.eurohoops.net/en/tag/anadolu-efes-en/feed/
+    tags: ["Turkey","Anadolu Efes","EuroLeague"]
+
+  # ===== SERBIA =====
+  - country: Serbia
+    team: Partizan
+    url: https://www.eurohoops.net/en/tag/partizan-en/feed/
+    tags: ["Serbia","Partizan","EuroLeague"]
+  - country: Serbia
+    team: Crvena Zvezda
+    url: https://www.eurohoops.net/en/tag/crvena-zvezda-en/feed/
+    tags: ["Serbia","Crvena Zvezda","EuroLeague"]
+
+  # ===== ITALY =====
+  - country: Italy
+    team: Olimpia Milano
+    url: https://www.eurohoops.net/en/tag/olimpia-milano-en/feed/
+    tags: ["Italy","Olimpia Milano","EuroLeague"]
+  - country: Italy
+    team: Virtus Bologna
+    url: https://www.eurohoops.net/en/tag/virtus-bologna-en/feed/
+    tags: ["Italy","Virtus Bologna","EuroLeague"]
+
+  # ===== FRANCE =====
+  - country: France
+    team: Paris Basketball
+    url: https://www.eurohoops.net/en/tag/paris-basketball-en/feed/
+    tags: ["France","Paris","EuroLeague"]
+  - country: France
+    team: AS Monaco
+    url: https://www.eurohoops.net/en/tag/monaco-en/feed/
+    tags: ["France","AS Monaco","EuroLeague"]
+  - country: France
+    team: ASVEL
+    url: https://www.eurohoops.net/en/tag/asvel-en/feed/
+    tags: ["France","ASVEL","EuroLeague"]
+
+  # ===== ISRAEL =====
+  - country: Israel
+    team: Maccabi Tel-Aviv
+    url: https://www.eurohoops.net/en/tag/maccabi-tel-aviv-en/feed/
+    tags: ["Israel","Maccabi Tel-Aviv","EuroLeague"]
+  - country: Israel
+    team: Hapoel Tel-Aviv
+    url: https://www.eurohoops.net/en/tag/hapoel-tel-aviv-en/feed/
+    tags: ["Israel","Hapoel Tel-Aviv","EuroLeague"]
+
+  # ===== LITHUANIA =====
+  - country: Lithuania
+    team: Zalgiris
+    url: https://www.eurohoops.net/en/tag/zalgiris-en/feed/
+    tags: ["Lithuania","Zalgiris","EuroLeague"]
+
+  # ===== GERMANY =====
+  - country: Germany
+    team: FC Bayern München
+    url: https://www.eurohoops.net/en/tag/bayern-munich-en/feed/
+    tags: ["Germany","Bayern","EuroLeague"]
+
+  # ===== UAE / DUBAI =====
+  - country: UAE
+    team: Dubai Basketball
+    url: https://www.eurohoops.net/en/tag/dubai-en/feed/
+    tags: ["UAE","Dubai","EuroLeague"]
+
+  # ===== GENERIC, αξιόπιστες =====
+  - url: https://www.basketnews.com/news/rss.xml
+    tags: ["EuroLeague","News"]
+  - url: https://sportando.basketball/feed/
+    tags: ["EuroLeague","News"]
