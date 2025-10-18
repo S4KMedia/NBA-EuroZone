@@ -13,7 +13,7 @@ canonifyURLs = true
 theme = "ananke"
 
 [outputs]
-  home = ["HTML", "RSS", "JSON"]
+  home = ["HTML", "RSS"]
 
 [pagination]
   pagerSize = 12
