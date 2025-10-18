@@ -1,252 +1,282 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RSS → Full article → rewrite → DeepL(EL) → smart tags → images (R2 optional) → Hugo posts EN/EL.
-Safe defaults: αν λείπουν DeepL/R2 secrets, συνεχίζει (EN μόνο ή τοπικές εικόνες).
+RSS -> Hugo bilingual posts (EN primary, optional EL via DeepL)
+- Reads feeds from config/feeds.yml
+- Dedupe via .state/posted.json
+- Writes to content/en/posts/ and content/el/posts/
+- Downloads cover images to static/images/covers/
 """
 
-import os, re, json, time, hashlib, pathlib, textwrap, io
-from datetime import datetime, timezone
+import os, re, json, time, hashlib, pathlib, html
+from datetime import datetime
 from urllib.parse import urlparse
-import yaml, feedparser, requests, frontmatter
+from typing import Dict, Any, Optional, List
+
+import yaml
+import feedparser
+import frontmatter
+import httpx
 from bs4 import BeautifulSoup
 from slugify import slugify
-from PIL import Image
 
-# ---------- Paths ----------
-ROOT = pathlib.Path.cwd()
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONTENT_EN = ROOT / "content" / "en" / "posts"
 CONTENT_EL = ROOT / "content" / "el" / "posts"
-STATE = ROOT / ".state"; STATE.mkdir(exist_ok=True)
-SEEN_FILE = STATE / "seen.json"
-IMG_LOCAL_DIR = ROOT / "static" / "images" / "covers"; IMG_LOCAL_DIR.mkdir(parents=True, exist_ok=True)
+COVERS_DIR = ROOT / "static" / "images" / "covers"
+STATE_DIR = ROOT / ".state"
+STATE_FILE = STATE_DIR / "posted.json"
+FEEDS_FILE = ROOT / "config" / "feeds.yml"
 
-# ---------- Env (DeepL / R2) ----------
 DEEPL_API_KEY = os.getenv("DEEPL_API_KEY", "").strip()
-DEEPL_TARGET_LANG = "EL"
+DEEPL_ENDPOINT = "https://api-free.deepl.com/v2/translate"  # free endpoint
+TIMEZONE_OFFSET = "+02:00"  # Europe/Berlin (χειμερινή/θερινή αλλά ok για timestamp string)
 
-R2_ACCOUNT_ID = os.getenv("CF_R2_ACCOUNT_ID", "").strip()
-R2_ACCESS_KEY_ID = os.getenv("CF_R2_ACCESS_KEY_ID", "").strip()
-R2_SECRET_ACCESS_KEY = os.getenv("CF_R2_SECRET_ACCESS_KEY", "").strip()
-R2_BUCKET = os.getenv("CF_R2_BUCKET", "").strip()
-R2_PUBLIC_BASEURL = os.getenv("CF_R2_PUBLIC_BASEURL", "").strip().rstrip("/")
+# ---------- helpers ----------
 
-USE_R2 = all([R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_BASEURL])
+def load_yaml(path: pathlib.Path) -> Any:
+    with path.open("r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
 
-# ---------- Smart tagging lists (expand later) ----------
-TAG_DB = {
-    "players": ["Giannis Antetokounmpo","Luka Doncic","Victor Wembanyama","Nikola Jokic","Rudy Gobert",
-                "Domantas Sabonis","Franz Wagner","Bogdan Bogdanovic","Alperen Sengun","Kristaps Porzingis"],
-    "teams": ["Milwaukee Bucks","Dallas Mavericks","San Antonio Spurs","Denver Nuggets","Boston Celtics",
-              "Real Madrid","Fenerbahce","Barcelona","Panathinaikos","Olympiacos"],
-    "leagues": ["NBA","EuroLeague","ACB","BBL","LNB","Serie A"],
-    "countries": ["Greece","Slovenia","France","Serbia","Spain","Italy","Germany","Turkey","Lithuania"],
-    "topics": ["transfer","draft","playoffs","contract","injury","preseason"]
-}
-
-# ---------- Helpers ----------
-def load_seen():
-    if SEEN_FILE.exists():
-        try: return json.loads(SEEN_FILE.read_text(encoding="utf-8"))
-        except Exception: return {}
-    return {}
-
-def save_seen(d):
-    SEEN_FILE.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
-
-def read_feeds():
-    cfg = yaml.safe_load((ROOT / "config" / "feeds.yml").read_text(encoding="utf-8"))
-    return cfg.get("sources", [])
-
-def http_get(url, timeout=15):
+def load_state() -> Dict[str, Any]:
+    if not STATE_FILE.exists():
+        return {"seen": {}}
     try:
-        r = requests.get(url, timeout=timeout, headers={"User-Agent":"Mozilla/5.0 (EuroZone Bot)"})
-        if r.status_code == 200: return r
+        with STATE_FILE.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"seen": {}}
+
+def save_state(state: Dict[str, Any]) -> None:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    with STATE_FILE.open("w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+def hash_id(s: str) -> str:
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()[:24]
+
+def first_image_from_html(html_text: str) -> Optional[str]:
+    try:
+        soup = BeautifulSoup(html_text, "html.parser")
+        img = soup.find("img")
+        if img and img.get("src"):
+            return img["src"]
     except Exception:
         pass
     return None
 
-def extract_fulltext(html):
-    soup = BeautifulSoup(html, "html.parser")
-    for t in soup(["script","style","noscript","iframe"]): t.decompose()
-    # remove common share blocks
-    for c in soup.select('[class*="share"], [class*="social"], [id*="share"]'): c.decompose()
-    ps = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
-    text = "\n\n".join([p for p in ps if len(p) > 40])
-    return text.strip()
+async def download_image(client: httpx.AsyncClient, url: str, dest_dir: pathlib.Path, base_slug: str) -> Optional[str]:
+    try:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        parsed = urlparse(url)
+        ext = pathlib.Path(parsed.path).suffix.lower()
+        if not ext or len(ext) > 5:
+            ext = ".jpg"
+        filename = f"{base_slug}-cover{ext}"
+        dest_path = dest_dir / filename
+        r = await client.get(url, timeout=20)
+        if r.status_code == 200 and r.content:
+            dest_path.write_bytes(r.content)
+            rel = f"/images/covers/{filename}"
+            return rel
+    except Exception:
+        return None
+    return None
 
-def get_og_image(html, base_url):
-    soup = BeautifulSoup(html, "html.parser")
-    og = soup.find("meta", property="og:image")
-    if og and og.get("content"): return og["content"]
-    # fallback: first <img> with decent size
-    img = soup.find("img")
-    if img and img.get("src"): return img["src"]
-    return ""
-
-def clean_title(t):
-    t = (t or "").strip()
-    t = re.sub(r"\s+", " ", t)
-    t = t.replace(" - ", ": ").strip()
+def clean_text(t: str) -> str:
+    t = html.unescape(t or "")
+    t = re.sub(r"\s+", " ", t).strip()
     return t
 
-def newsroom_rewrite(lead):
-    # Μικρό, “καθαρό” lead (χωρίς LLM για σταθερότητα)
-    lead = re.sub(r"\s+", " ", lead).strip()
-    return lead if len(lead) <= 320 else lead[:317] + "..."
-
-def deepl_translate(text, target_lang="EL"):
-    if not DEEPL_API_KEY or not text.strip(): return ""
+def build_date(dt_struct) -> str:
+    # feedparser returns time.struct_time or None
     try:
-        r = requests.post(
-            "https://api-free.deepl.com/v2/translate",
-            data={"auth_key": DEEPL_API_KEY, "text": text, "target_lang": target_lang},
-            timeout=30,
-        )
-        j = r.json()
-        return j["translations"][0]["text"]
+        if dt_struct:
+            return datetime(*dt_struct[:6]).isoformat() + TIMEZONE_OFFSET
     except Exception:
-        return ""
+        pass
+    # fallback: now
+    return datetime.now().isoformat() + TIMEZONE_OFFSET
 
-def pick_tags(text):
-    t = text.lower()
-    tags = {"players":[], "teams":[], "leagues":[], "countries":[], "topics":[]}
-    for k, vals in TAG_DB.items():
-        for v in vals:
-            if v.lower() in t: tags[k].append(v)
-    return tags
+def uniq_slug(base: str, used: set) -> str:
+    s = slugify(base, lowercase=True, max_length=80)
+    if s not in used:
+        return s
+    i = 2
+    while f"{s}-{i}" in used:
+        i += 1
+    return f"{s}-{i}"
 
-def optimize_image_bytes(raw):
+async def deepl_translate(client: httpx.AsyncClient, text: str, source_lang: str, target_lang: str) -> str:
+    if not DEEPL_API_KEY:
+        return text
     try:
-        im = Image.open(io.BytesIO(raw)).convert("RGB")
-        out = io.BytesIO()
-        im.save(out, format="JPEG", quality=82, optimize=True, progressive=True)
-        return out.getvalue()
+        data = {
+            "auth_key": DEEPL_API_KEY,
+            "text": text,
+            "source_lang": source_lang.upper(),
+            "target_lang": target_lang.upper(),
+        }
+        r = await client.post(DEEPL_ENDPOINT, data=data, timeout=30)
+        r.raise_for_status()
+        jd = r.json()
+        return jd["translations"][0]["text"]
     except Exception:
-        return raw  # fallback
+        # on any failure, return original
+        return text
 
-def upload_r2(key, data):
-    if not USE_R2: return ""
-    try:
-        import boto3
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
-            aws_access_key_id=R2_ACCESS_KEY_ID,
-            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-        )
-        s3.put_object(Bucket=R2_BUCKET, Key=key, Body=data, ContentType="image/jpeg", ACL="public-read")
-        return f"{R2_PUBLIC_BASEURL}/{key}"
-    except Exception:
-        return ""
-
-def store_cover(slug, img_url):
-    if not img_url: return "", ""
-    r = http_get(img_url, timeout=20)
-    if not r: return "", ""
-    data = optimize_image_bytes(r.content)
-    key = f"covers/{slug}-cover.jpg"
-
-    # Prefer R2
-    if USE_R2:
-        public = upload_r2(key, data)
-        if public: return public, "r2"
-
-    # Local fallback (served from /images/covers/)
-    fp = IMG_LOCAL_DIR / f"{slug}-cover.jpg"
-    fp.write_bytes(data)
-    return f"/images/covers/{slug}-cover.jpg", "local"
-
-def write_post(lang, slug, title, date_iso, body_md, source_url, tags_dict, featured_image):
-    """
-    Γράφει Hugo post ως content/<lang>/posts/<slug>/index.md
-    """
-    base_dir = CONTENT_EN if lang == "en" else CONTENT_EL
-    path = base_dir / slug / "index.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    fm = {
-        "title": title or "Untitled",
-        "date": date_iso,
-        "categories": ["news"],
-        "tags": sorted(set(sum(tags_dict.values(), []))) if tags_dict else [],
-        "players": tags_dict.get("players", []) if tags_dict else [],
-        "teams": tags_dict.get("teams", []) if tags_dict else [],
-        "leagues": tags_dict.get("leagues", []) if tags_dict else [],
-        "countries": tags_dict.get("countries", []) if tags_dict else [],
-        "topics": tags_dict.get("topics", []) if tags_dict else [],
-        "source": source_url or "",
-        "featured_image": featured_image or "",
-        "draft": False,
-    }
-
-    # ΜΗΝ χρησιμοποιήσεις το όνομα 'post' (δήμιουργησε conflict)
-    fm_post = frontmatter.Post(body_md or "", **fm)
-    content = frontmatter.dumps(fm_post)
-    path.write_text(content, encoding="utf-8")
-
-    print(f"[EUROZONE] Wrote {lang.upper()} → {path}")
-    return path
-
-def main():
+def ensure_dirs():
     CONTENT_EN.mkdir(parents=True, exist_ok=True)
     CONTENT_EL.mkdir(parents=True, exist_ok=True)
+    COVERS_DIR.mkdir(parents=True, exist_ok=True)
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
 
-    seen = load_seen()
-    feeds = read_feeds()
-    created = 0
+# ---------- main ----------
 
-    for feed in feeds:
-        d = feedparser.parse(feed["url"])
-        for entry in d.entries[:6]:
-            guid = entry.get("id") or entry.get("link")
-            if not guid: 
-                continue
-            h = hashlib.sha1(guid.encode("utf-8")).hexdigest()
-            if h in seen:
-                continue
+async def process_feed(client: httpx.AsyncClient, feed: Dict[str, Any], state: Dict[str, Any]) -> int:
+    """
+    Returns number of new posts created.
+    feed schema example:
+      - country: Slovenia
+        team: Mavericks
+        url: https://...
+        tags: ["Slovenia","NBA","Luka Doncic"]
+    """
+    url = feed["url"]
+    allow_tags = feed.get("tags", [])
+    d = feedparser.parse(url)
 
-            title = clean_title(entry.get("title",""))
-            link = entry.get("link","").strip()
-            date_t = entry.get("published_parsed")
-            dt = datetime.fromtimestamp(time.mktime(date_t), tz=timezone.utc) if date_t else datetime.now(timezone.utc)
-            date_iso = dt.isoformat()
+    seen = state.setdefault("seen", {})
+    new_count = 0
 
-            # Fetch & extract full text + og:image
-            html = http_get(link).text if http_get(link) else ""
-            body_txt = extract_fulltext(html) if html else (entry.get("summary","") or "")
-            lead = newsroom_rewrite(body_txt.split("\n\n")[0] if body_txt else "")
-            og_img = get_og_image(html, link) if html else ""
+    used_slugs_en = {p.name for p in CONTENT_EN.glob("*.md")}
+    used_slugs_el = {p.name for p in CONTENT_EL.glob("*.md")}
 
-            # Image handling
-            slug = slugify(title)[:80] or slugify(link)[:80]
-            featured_url, img_where = store_cover(slug, og_img)
+    for entry in d.entries[:20]:  # limit per run
+        link = entry.get("link") or ""
+        title = clean_text(entry.get("title") or "")
+        summary = clean_text(entry.get("summary") or entry.get("description") or "")
+        published = build_date(entry.get("published_parsed"))
 
-            # Build EN body
-            body_en = ""
-            if lead: body_en += f"{lead}\n\n"
-            if body_txt and lead and not body_txt.startswith(lead):
-                body_en += body_txt
-            elif body_txt and not lead:
-                body_en += body_txt
+        # unique key
+        sig = hash_id(link or title)
+        if sig in seen:
+            continue
 
-            # Smart tags
-            tags_dict = pick_tags(f"{title}\n{body_en}")
+        # choose cover
+        cover_url = None
+        # (a) enclosure
+        enc = entry.get("enclosures") or []
+        if enc:
+            cover_url = enc[0].get("href")
+        # (b) media_content
+        if not cover_url and entry.get("media_content"):
+            try:
+                cover_url = entry["media_content"][0].get("url")
+            except Exception:
+                pass
+        # (c) first img from summary
+        if not cover_url and summary:
+            img = first_image_from_html(summary)
+            if img:
+                cover_url = img
 
-            # Write EN
-            write_post("en", slug, title, date_iso, body_en.strip(), link, tags_dict, featured_url)
+        # build slug
+        base_slug = slugify(title or link, lowercase=True, max_length=80)
+        slug_en = uniq_slug(base_slug, used_slugs_en)
+        used_slugs_en.add(slug_en)
 
-            # Translate to EL (optional)
-            if DEEPL_API_KEY:
-                el_title = deepl_translate(title, DEEPL_TARGET_LANG) or title
-                el_body = deepl_translate(body_en, DEEPL_TARGET_LANG) or body_en
-                write_post("el", slug, el_title, date_iso, el_body.strip(), link, tags_dict, featured_url)
+        cover_rel = None
+        if cover_url:
+            try:
+                cover_rel = await download_image(client, cover_url, COVERS_DIR, slug_en)
+            except Exception:
+                cover_rel = None
 
-            seen[h] = {"link": link, "slug": slug, "created": date_iso}
-            created += 1
+        # front matter EN
+        fm_en = {
+            "title": title or "Untitled",
+            "date": published,
+            "draft": False,
+            "description": summary[:240] if summary else "",
+            "tags": list(set((entry.get("tags") and [t["term"] for t in entry["tags"]]) or []) | set(allow_tags)),
+            "categories": ["news"],
+            "players": [],
+            "teams": [],
+            "leagues": ["NBA"],
+            "countries": list({feed.get("country")} - {None}),
+            "topics": [],
+        }
+        if cover_rel:
+            fm_en["cover"] = {
+                "image": cover_rel,
+                "alt": "",
+                "caption": "",
+            }
 
-    save_seen(seen)
-    print(f"[EUROZONE] Created/updated posts: {created}")
+        # content EN (very short – link out)
+        body_en = []
+        body_en.append(f"> Source: [{urlparse(link).netloc}]({link})")
+        body_en.append("")
+        body_en.append("*(Auto-imported via RSS. Short excerpt; please read the original source for full context.)*")
+        content_en = "\n".join(body_en)
+
+        # write EN
+        post_path_en = CONTENT_EN / f"{slug_en}.md"
+        post_en = frontmatter.Post(content_en, **fm_en)
+        with post_path_en.open("w", encoding="utf-8") as f:
+            frontmatter.dump(post_en, f)
+
+        # optional EL via DeepL
+        if DEEPL_API_KEY:
+            title_el = await deepl_translate(client, title, "EN", "EL") if title else ""
+            desc_el = await deepl_translate(client, fm_en["description"], "EN", "EL") if fm_en.get("description") else ""
+            body_el_txt = await deepl_translate(client, "Auto-imported via RSS. Short excerpt; please read the original source for full context.", "EN", "EL")
+            body_el = []
+            body_el.append(f"> Πηγή: [{urlparse(link).netloc}]({link})")
+            body_el.append("")
+            body_el.append(f"*({body_el_txt})*")
+            content_el = "\n".join(body_el)
+
+            fm_el = dict(fm_en)
+            fm_el["title"] = title_el or fm_en["title"]
+            fm_el["description"] = desc_el or fm_en.get("description") or ""
+            # countries in Greek? άστα όπως είναι προς το παρόν
+            post_path_el = CONTENT_EL / f"{slug_en}.md"  # ίδιο slug για απλότητα
+            post_el = frontmatter.Post(content_el, **fm_el)
+            with post_path_el.open("w", encoding="utf-8") as f:
+                frontmatter.dump(post_el, f)
+
+        # mark as seen
+        seen[sig] = {
+            "link": link,
+            "title": title,
+            "slug": slug_en,
+            "ts": int(time.time()),
+        }
+        new_count += 1
+
+    return new_count
+
+async def main():
+    ensure_dirs()
+    feeds_spec = load_yaml(FEEDS_FILE) or {}
+    sources = feeds_spec.get("sources", [])
+
+    state = load_state()
+
+    async with httpx.AsyncClient(follow_redirects=True, headers={"User-Agent":"NBA-EuroZone RSS Importer/1.0"}) as client:
+        total_new = 0
+        for feed in sources:
+            try:
+                added = await process_feed(client, feed, state)
+                total_new += added
+            except Exception as e:
+                print(f"[WARN] Feed failed: {feed.get('url')} :: {e}")
+
+    save_state(state)
+    print(f"Done. New posts: {total_new}")
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
