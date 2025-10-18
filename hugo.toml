@@ -2,8 +2,10 @@
 baseURL = "https://s4kmedia.github.io/nba-eurozone/"
 title = "NBA EuroZone"
 publishDir = "public"
+
 defaultContentLanguage = "en"
 defaultContentLanguageInSubdir = true
+
 enableRobotsTXT = true
 canonifyURLs = true
 
@@ -79,13 +81,13 @@ canonifyURLs = true
         name = "Σχετικά"
         url  = "/about/"
         weight = 5
-        
-  [module]
-    [module.hugoVersion]
-      extended = true
-      min = "0.111.0"
 
-    [[module.imports]]
-      path = "github.com/theNewDynamic/gohugo-theme-ananke"
-      version = "v0.11.0"
+# ---------- Hugo Modules (Theme pin) ----------
+[module]
+  [module.hugoVersion]
+    extended = true
+    min = "0.111.0"
 
+  [[module.imports]]
+    path = "github.com/theNewDynamic/gohugo-theme-ananke"
+    version = "v0.11.0"
