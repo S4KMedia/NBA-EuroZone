@@ -1,0 +1,49 @@
+name: RSS Rewrite Import
+
+on:
+  schedule:
+    - cron: "19 * * * *" # κάθε ώρα στο :19
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run importer (rewrite EN & EL)
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}   # optional fallback
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}   # required
+          CF_API_TOKEN:  ${{ secrets.CF_API_TOKEN }}    # required
+          CF_MODEL:      ${{ vars.CF_MODEL }}           # optional (defaults to llama-3.1-70b-instruct)
+        run: |
+          python scripts/rss_import_rewrite.py
+
+      - name: Commit & Push (if changes)
+        run: |
+          git config user.name "nba-eurozone-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git add -A
+            git commit -m "chore(rss): rewrite import $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            git push
+          else
+            echo "No changes to commit."
+          fi
