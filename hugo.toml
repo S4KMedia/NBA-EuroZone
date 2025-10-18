@@ -9,7 +9,7 @@ defaultContentLanguageInSubdir = true
 enableRobotsTXT = true
 canonifyURLs = true
 
-# ✅ Χρησιμοποιούμε το local theme "ananke" (στο themes/ananke)
+# ✅ χρησιμοποιούμε το local theme στο themes/ananke
 theme = "ananke"
 
 [outputs]
@@ -84,6 +84,3 @@ theme = "ananke"
         name = "Σχετικά"
         url  = "/about/"
         weight = 5
-
-# ❌ ΣΗΜΕΙΩΣΗ: Καμία ενότητα [module] εδώ.
-# Θα κατεβάζουμε το theme ως απλό git clone στο build.
