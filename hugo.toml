@@ -1,4 +1,3 @@
-# hugo.toml
 baseURL = "https://s4kmedia.github.io/nba-eurozone/"
 title = "NBA EuroZone"
 publishDir = "public"
@@ -9,10 +8,17 @@ defaultContentLanguageInSubdir = true
 enableRobotsTXT = true
 canonifyURLs = true
 
-# ✅ χρησιμοποιούμε το local theme στο themes/ananke
+# ✅ local theme
 theme = "ananke"
 
+# επιτρέπει raw HTML σε περιεχόμενο
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
 [outputs]
+  # Βγάλαμε το "JSON" για να μην γράφει warn. Αν το χρειαστείς ξανά, το ξαναβάζουμε.
   home = ["HTML", "RSS"]
 
 [pagination]
@@ -36,6 +42,11 @@ theme = "ananke"
   ShowReadingTime = true
   ShowBreadCrumbs = true
   ShowPostNavLinks = true
+  show_reading_time = true
+  recent_posts_number = 12
+  background_color_class = "bg-black"
+  cover_dimming_class = "bg-black-60"
+  mainSections = ["posts"]   # 👈 Κλειδί: δείξε το section "posts" στην αρχική
 
 [languages]
 
