@@ -14,6 +14,13 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+env:
+  # 🔒 ΠΙΝΑΡΟΥΜΕ την έκδοση του theme που θα γίνεται cache
+  THEME_REF: v0.11.0
+  THEME_NAME: ananke
+  THEME_REPO: https://github.com/theNewDynamic/gohugo-theme-ananke.git
+  SITE_BASEURL: https://s4kmedia.github.io/nba-eurozone/
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -27,38 +34,44 @@ jobs:
           hugo-version: '0.151.0'
           extended: true
 
-      # ✅ Go ΠΡΙΝ το hugo mod tidy
-      - name: Setup Go (for Hugo Modules)
-        uses: actions/setup-go@v5
+      # ✅ Cache το τοπικό theme (γρηγορότερα builds)
+      - name: Cache Hugo theme
+        id: cache-theme
+        uses: actions/cache@v3
         with:
-          go-version: '1.22.x'
-          check-latest: true
+          path: themes/${{ env.THEME_NAME }}
+          key: ananke-${{ env.THEME_REF }}-${{ runner.os }}
 
-      - name: Go env debug
+      # Clone ΜΟΝΟ αν δεν υπάρχει cache
+      - name: Fetch Ananke theme (local, pinned)
+        if: steps.cache-theme.outputs.cache-hit != 'true'
         run: |
-          go version
-          go env
+          rm -rf themes/${THEME_NAME}
+          mkdir -p themes
+          git clone --depth=1 --branch "${THEME_REF}" "${THEME_REPO}" "themes/${THEME_NAME}"
+          test -f "themes/${THEME_NAME}/theme.toml" && echo "Theme ready."
 
-      # (προαιρετικό καθάρισμα cache — χωρίς hugo mod clean εδώ)
+      # Debug για να βλέπουμε config & περιεχόμενο
+      - name: Show config tree (debug)
+        run: |
+          echo "== CONFIG =="
+          find config -maxdepth 2 -type f -print || true
+          echo "== ROOT =="
+          ls -la
+          echo "== THEMES =="
+          ls -la themes || true
+          echo "== Grep for theme =="
+          grep -R "^theme" -n || true
+
+      # Καθάρισμα cache (ασφαλές)
       - name: Clean Hugo cache
         run: |
           rm -rf ~/.cache/hugo_cache ~/.hugo_cache _vendor || true
 
-      # ✅ Tidy με σωστό proxy για να φέρει το theme module
-      - name: Hugo modules tidy
-        env:
-          GO111MODULE: "on"
-          GOPROXY: "https://proxy.golang.org,direct"
-          HUGO_MODULE_PROXY: "direct"
-        run: hugo mod tidy
-
-      - name: Show Hugo module graph (debug)
-        run: hugo mod graph
-
       - name: Build
         env:
           HUGO_ENVIRONMENT: "production"
-        run: hugo --gc --minify --baseURL "https://s4kmedia.github.io/nba-eurozone/"
+        run: hugo --gc --minify --baseURL "${SITE_BASEURL}"
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
