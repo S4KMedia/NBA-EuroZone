@@ -8,17 +8,14 @@ defaultContentLanguageInSubdir = true
 enableRobotsTXT = true
 canonifyURLs = true
 
-# ✅ local theme
 theme = "ananke"
 
-# επιτρέπει raw HTML σε περιεχόμενο
 [markup]
   [markup.goldmark]
     [markup.goldmark.renderer]
       unsafe = true
 
 [outputs]
-  # Βγάλαμε το "JSON" για να μην γράφει warn. Αν το χρειαστείς ξανά, το ξαναβάζουμε.
   home = ["HTML", "RSS"]
 
 [pagination]
@@ -46,7 +43,7 @@ theme = "ananke"
   recent_posts_number = 12
   background_color_class = "bg-black"
   cover_dimming_class = "bg-black-60"
-  mainSections = ["posts"]   # 👈 Κλειδί: δείξε το section "posts" στην αρχική
+  mainSections = ["posts"]
 
 [languages]
 
@@ -58,19 +55,19 @@ theme = "ananke"
     [languages.en.menu]
       [[languages.en.menu.main]]
         name = "News"
-        url  = "/"
+        pageRef = "/"          # 👈 σωστό home per-language
         weight = 1
       [[languages.en.menu.main]]
         name = "Categories"
-        url  = "/categories/"
+        pageRef = "categories" # 👈 taxonomy terms page (όχι url)
         weight = 2
       [[languages.en.menu.main]]
         name = "Tags"
-        url  = "/tags/"
+        pageRef = "tags"
         weight = 3
       [[languages.en.menu.main]]
         name = "About"
-        url  = "/about/"
+        pageRef = "about"
         weight = 5
 
   [languages.el]
@@ -81,17 +78,17 @@ theme = "ananke"
     [languages.el.menu]
       [[languages.el.menu.main]]
         name = "Νέα"
-        url  = "/"
+        pageRef = "/"
         weight = 1
       [[languages.el.menu.main]]
         name = "Κατηγορίες"
-        url  = "/categories/"
+        pageRef = "categories"
         weight = 2
       [[languages.el.menu.main]]
         name = "Ετικέτες"
-        url  = "/tags/"
+        pageRef = "tags"
         weight = 3
       [[languages.el.menu.main]]
         name = "Σχετικά"
-        url  = "/about/"
+        pageRef = "about"
         weight = 5
