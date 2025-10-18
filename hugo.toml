@@ -9,6 +9,9 @@ defaultContentLanguageInSubdir = true
 enableRobotsTXT = true
 canonifyURLs = true
 
+# ✅ Χρησιμοποιούμε το local theme "ananke" (στο themes/ananke)
+theme = "ananke"
+
 [outputs]
   home = ["HTML", "RSS", "JSON"]
 
@@ -82,12 +85,5 @@ canonifyURLs = true
         url  = "/about/"
         weight = 5
 
-# ---------- Hugo Modules (Theme pin) ----------
-[module]
-  [module.hugoVersion]
-    extended = true
-    min = "0.111.0"
-
-  [[module.imports]]
-    path = "github.com/theNewDynamic/gohugo-theme-ananke"
-    version = "v0.11.0"
+# ❌ ΣΗΜΕΙΩΣΗ: Καμία ενότητα [module] εδώ.
+# Θα κατεβάζουμε το theme ως απλό git clone στο build.
